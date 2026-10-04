@@ -1,0 +1,141 @@
+#define BLYNK_TEMPLATE_ID "TMPL6Zr2lCZYf"
+#define BLYNK_TEMPLATE_NAME "Training"
+#define BLYNK_AUTH_TOKEN "EmerETJjHXnZvE307T1FjWjjwsT_idju"
+#define BLYNK_PRINT Serial
+
+char ssid[] = "Recovery";
+char pass[] = "a1b2c3d4";
+
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+
+// Pin LED
+const int ledMerah = 4;
+const int ledKuning = 2;
+const int ledHijau = 26;
+const int ledBiru = 27;
+
+// Pin Tombol
+const int pinMerah = 33;
+const int pinKuning = 25;
+const int pinHijau = 14;
+const int pinBiru = 15;
+
+// --- Variabel Global untuk Status ---
+
+// Menyimpan status LED (true = NYALA, false = MATI)
+bool stateLedMerah = false;
+bool stateLedKuning = false;
+bool stateLedHijau = false;
+bool stateLedBiru = false;
+
+// Menyimpan status pin tombol terakhir
+int lastPinMerah = HIGH;
+int lastPinKuning = HIGH;
+int lastPinHijau = HIGH;
+int lastPinBiru = HIGH;
+
+long lastDebounceTime = 0;
+long debounceDelay = 50;
+BlynkTimer timer;
+
+// --- FUNGSI DARI BLYNK ---
+// Saat widget di toggle
+BLYNK_WRITE(V0) {
+  stateLedMerah = param.asInt(); // 1 (true) atau 0 (false)
+  digitalWrite(ledMerah, stateLedMerah);
+}
+
+BLYNK_WRITE(V1) {
+  stateLedKuning = param.asInt();
+  digitalWrite(ledKuning, stateLedKuning);
+}
+
+BLYNK_WRITE(V2) {
+  stateLedHijau = param.asInt();
+  digitalWrite(ledHijau, stateLedHijau);
+}
+
+BLYNK_WRITE(V3) {
+  stateLedBiru = param.asInt();
+  digitalWrite(ledBiru, stateLedBiru);
+}
+
+// --- FUNGSI CEK TOMBOL FISIK (LOGIKA TOGGLE BARU) ---
+void cekTombolFisik() {
+
+  // Hanya jalankan cek tombol setiap 50ms (ini cara debounce yg lebih simpel)
+  if (millis() - lastDebounceTime > debounceDelay) {
+    lastDebounceTime = millis();
+
+    // --- Cek Tombol MERAH ---
+    int bacaMerah = digitalRead(pinMerah);
+    // Cek jika ada *transisi* dari DILEPAS (HIGH) ke DITEKAN (LOW)
+    if (bacaMerah == LOW && lastPinMerah == HIGH) {
+      Serial.println("Tombol Merah DITEKAN (Toggle)");
+      stateLedMerah = !stateLedMerah; // Balik status
+      digitalWrite(ledMerah, stateLedMerah);
+      Blynk.virtualWrite(V0, stateLedMerah);
+    }
+    lastPinMerah = bacaMerah; // Simpan status terakhir
+
+    // --- Cek Tombol KUNING ---
+    int bacaKuning = digitalRead(pinKuning);
+    if (bacaKuning == LOW && lastPinKuning == HIGH) {
+      Serial.println("Tombol Kuning DITEKAN (Toggle)");
+      stateLedKuning = !stateLedKuning; // Balik status
+      digitalWrite(ledKuning, stateLedKuning);
+      Blynk.virtualWrite(V1, stateLedKuning);
+    }
+    lastPinKuning = bacaKuning;
+
+    // --- Cek Tombol HIJAU ---
+    int bacaHijau = digitalRead(pinHijau);
+    if (bacaHijau == LOW && lastPinHijau == HIGH) {
+      Serial.println("Tombol Hijau DITEKAN (Toggle)");
+      stateLedHijau = !stateLedHijau; // Balik status
+      digitalWrite(ledHijau, stateLedHijau);
+      Blynk.virtualWrite(V2, stateLedHijau);
+    }
+    lastPinHijau = bacaHijau;
+
+// --- Cek Tombol BIRU ---
+    int bacaBiru = digitalRead(pinBiru);
+    if (bacaBiru == LOW && lastPinBiru == HIGH) {
+      Serial.println("Tombol Biru DITEKAN (Toggle)");
+      stateLedBiru = !stateLedBiru; // Balik status
+      digitalWrite(ledBiru, stateLedBiru);
+      Blynk.virtualWrite(V3, stateLedBiru);
+    }
+    lastPinBiru = bacaBiru;
+  } // <-- This closes the "if (millis()...)" statement
+} // <-- ADD THIS BRACKET to close the "void cekTombolFisik()" function!
+
+// --- Setup dan Loop (Tetap Sama) ---
+void setup() {
+  Serial.begin(115200);
+
+  // Setup Pin LED
+  pinMode(ledMerah, OUTPUT);
+  pinMode(ledKuning, OUTPUT);
+  pinMode(ledHijau, OUTPUT);
+  pinMode(ledBiru, OUTPUT);
+
+  // Setup Pin Tombol (WAJIB PAKE PULLUP)
+  pinMode(pinMerah, INPUT_PULLUP);
+  pinMode(pinKuning, INPUT_PULLUP);
+  pinMode(pinHijau, INPUT_PULLUP);
+  pinMode(pinBiru, INPUT_PULLUP);
+
+  // Koneksi ke Blynk
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+
+  // Setup timer untuk panggil fungsi cekTombolFisik
+  // (Panggil fungsi ini 20x per detik, sudah cukup)
+  timer.setInterval(50L, cekTombolFisik);
+}
+
+void loop() {
+  Blynk.run(); // Wajib ada, ini jantungnya Blynk
+  timer.run(); // Wajib ada, ini untuk menjalankan timer
+}
